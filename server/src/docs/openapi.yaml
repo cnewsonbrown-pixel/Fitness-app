@@ -1,0 +1,977 @@
+openapi: 3.1.0
+info:
+  title: FitStudio API
+  description: |
+    FitStudio is a comprehensive gym and fitness studio management platform.
+
+    ## Authentication
+    Most endpoints require authentication via Bearer token (JWT).
+    Include the token in the Authorization header: `Authorization: Bearer <token>`
+
+    ## Multi-tenancy
+    After authentication, requests are scoped to a specific tenant (studio).
+    The tenant ID is derived from the authenticated user's context.
+
+    ## Rate Limiting
+    API requests are rate-limited to 100 requests per minute per IP.
+
+    ## Error Responses
+    All errors follow the format:
+    ```json
+    {
+      "success": false,
+      "error": {
+        "code": "ERROR_CODE",
+        "message": "Human-readable message"
+      }
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: FitStudio Support
+    email: support@fitstudio.com
+  license:
+    name: Proprietary
+    url: https://fitstudio.com/terms
+
+servers:
+  - url: https://api.fitstudio.com/api/v1
+    description: Production
+  - url: https://staging-api.fitstudio.com/api/v1
+    description: Staging
+  - url: http://localhost:3000/api/v1
+    description: Local Development
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Tenants
+    description: Studio (tenant) management
+  - name: Members
+    description: Member management
+  - name: Memberships
+    description: Membership types and subscriptions
+  - name: Locations
+    description: Location management
+  - name: Classes
+    description: Class types and sessions
+  - name: Bookings
+    description: Class bookings and check-in
+  - name: Staff
+    description: Staff and instructor management
+  - name: Billing
+    description: Stripe billing and payments
+  - name: Analytics
+    description: Dashboard and reports
+  - name: Marketing
+    description: Campaigns and lead capture
+  - name: CRM
+    description: Journeys, segments, and lead scoring
+  - name: Content
+    description: Articles and announcements
+  - name: Gamification
+    description: Points, badges, challenges, and streaks
+  - name: Video
+    description: Video content and progress tracking
+  - name: API Keys
+    description: Enterprise API key management
+  - name: Webhooks
+    description: Webhook subscription management
+  - name: Branding
+    description: White-label theming
+
+paths:
+  # ============================================
+  # Authentication
+  # ============================================
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a new user
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Login with email and password
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get current user profile
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh access token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Tokens refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokensResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Logout and invalidate refresh token
+      operationId: logoutUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  # ============================================
+  # Tenants
+  # ============================================
+  /tenants:
+    post:
+      tags: [Tenants]
+      summary: Create a new studio (tenant)
+      operationId: createTenant
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTenantRequest'
+      responses:
+        '201':
+          description: Tenant created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /tenants/{id}:
+    get:
+      tags: [Tenants]
+      summary: Get tenant details
+      operationId: getTenant
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      responses:
+        '200':
+          description: Tenant details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    put:
+      tags: [Tenants]
+      summary: Update tenant settings
+      operationId: updateTenant
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTenantRequest'
+      responses:
+        '200':
+          description: Tenant updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+
+  # ============================================
+  # Members
+  # ============================================
+  /members:
+    get:
+      tags: [Members]
+      summary: List all members
+      operationId: listMembers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: lifecycleStage
+          in: query
+          schema:
+            $ref: '#/components/schemas/LifecycleStage'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: List of members
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembersListResponse'
+
+    post:
+      tags: [Members]
+      summary: Create a new member
+      operationId: createMember
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMemberRequest'
+      responses:
+        '201':
+          description: Member created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberResponse'
+
+  /members/{id}:
+    get:
+      tags: [Members]
+      summary: Get member by ID
+      operationId: getMember
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MemberId'
+      responses:
+        '200':
+          description: Member details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    put:
+      tags: [Members]
+      summary: Update member
+      operationId: updateMember
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MemberId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMemberRequest'
+      responses:
+        '200':
+          description: Member updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberResponse'
+
+  # ============================================
+  # Bookings
+  # ============================================
+  /bookings:
+    get:
+      tags: [Bookings]
+      summary: List bookings
+      operationId: listBookings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: memberId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: classSessionId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/BookingStatus'
+      responses:
+        '200':
+          description: List of bookings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingsListResponse'
+
+    post:
+      tags: [Bookings]
+      summary: Create a booking
+      operationId: createBooking
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '201':
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        '409':
+          description: Already booked or class full
+          $ref: '#/components/responses/ConflictError'
+
+  /bookings/{id}/cancel:
+    post:
+      tags: [Bookings]
+      summary: Cancel a booking
+      operationId: cancelBooking
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BookingId'
+      responses:
+        '200':
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+
+  /bookings/check-in/qr:
+    post:
+      tags: [Bookings]
+      summary: Check in member via QR code
+      operationId: checkInQR
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [classSessionId, memberId]
+              properties:
+                classSessionId:
+                  type: string
+                  format: uuid
+                memberId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Member checked in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+
+  # ============================================
+  # Analytics
+  # ============================================
+  /analytics/dashboard:
+    get:
+      tags: [Analytics]
+      summary: Get dashboard metrics
+      operationId: getDashboard
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+
+  /analytics/reports/revenue:
+    get:
+      tags: [Analytics]
+      summary: Generate revenue report
+      operationId: getRevenueReport
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+      responses:
+        '200':
+          description: Revenue report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueReportResponse'
+
+  # ============================================
+  # Health Check
+  # ============================================
+  /health:
+    get:
+      tags: [System]
+      summary: Health check endpoint
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: healthy
+                      timestamp:
+                        type: string
+                        format: date-time
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    TenantId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MemberId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    BookingId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    StartDate:
+      name: startDate
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date-time
+    EndDate:
+      name: endDate
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date-time
+
+  schemas:
+    # Base schemas
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+
+    # Auth schemas
+    RegisterRequest:
+      type: object
+      required: [email, password, firstName, lastName]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        firstName:
+          type: string
+        lastName:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+            tokens:
+              $ref: '#/components/schemas/Tokens'
+
+    TokensResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            tokens:
+              $ref: '#/components/schemas/Tokens'
+
+    UserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Tokens:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+
+    # Tenant schemas
+    CreateTenantRequest:
+      type: object
+      required: [name, slug]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+          pattern: '^[a-z0-9-]+$'
+        timezone:
+          type: string
+          default: UTC
+
+    UpdateTenantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        timezone:
+          type: string
+        bookingWindowDays:
+          type: integer
+        cancellationWindowHours:
+          type: integer
+        waitlistEnabled:
+          type: boolean
+
+    TenantResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Tenant'
+
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        tier:
+          $ref: '#/components/schemas/Tier'
+        timezone:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Tier:
+      type: string
+      enum: [BASE, MID, PREMIUM]
+
+    # Member schemas
+    LifecycleStage:
+      type: string
+      enum: [LEAD, TRIAL, ACTIVE, AT_RISK, CHURNED, WIN_BACK]
+
+    CreateMemberRequest:
+      type: object
+      required: [email, firstName, lastName]
+      properties:
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+
+    UpdateMemberRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+        lifecycleStage:
+          $ref: '#/components/schemas/LifecycleStage'
+        tags:
+          type: array
+          items:
+            type: string
+
+    MemberResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Member'
+
+    MembersListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+
+    Member:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        user:
+          $ref: '#/components/schemas/User'
+        phone:
+          type: string
+        lifecycleStage:
+          $ref: '#/components/schemas/LifecycleStage'
+        leadScore:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        totalPoints:
+          type: integer
+        currentStreak:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    # Booking schemas
+    BookingStatus:
+      type: string
+      enum: [CONFIRMED, WAITLISTED, CANCELLED, NO_SHOW, CHECKED_IN]
+
+    CreateBookingRequest:
+      type: object
+      required: [classSessionId, memberId]
+      properties:
+        classSessionId:
+          type: string
+          format: uuid
+        memberId:
+          type: string
+          format: uuid
+
+    BookingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Booking'
+
+    BookingsListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Booking'
+
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        classSessionId:
+          type: string
+          format: uuid
+        memberId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/BookingStatus'
+        waitlistPosition:
+          type: integer
+          nullable: true
+        checkedInAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    # Analytics schemas
+    DashboardResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            memberCount:
+              type: integer
+            memberGrowth:
+              type: number
+            lifecycleBreakdown:
+              type: object
+              additionalProperties:
+                type: integer
+
+    RevenueReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            total:
+              type: number
+            byType:
+              type: object
+              additionalProperties:
+                type: number
+            dailyBreakdown:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  amount:
+                    type: number
+
+  responses:
+    UnauthorizedError:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: UNAUTHORIZED
+              message: Authentication required
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: NOT_FOUND
+              message: Resource not found
+
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: VALIDATION_ERROR
+              message: Invalid request data
+
+    ConflictError:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: CONFLICT
+              message: Resource already exists

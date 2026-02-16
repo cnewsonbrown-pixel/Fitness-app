@@ -1,0 +1,141 @@
+version: '3.8'
+
+# Docker Compose configuration for running tests in isolation
+# Usage: docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit
+
+services:
+  # Test Database (isolated, ephemeral)
+  test-db:
+    image: postgres:16-alpine
+    container_name: fitstudio-test-db
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: fitstudio_test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data  # Use tmpfs for speed, data is ephemeral
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d fitstudio_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  # Test Redis (isolated)
+  test-redis:
+    image: redis:7-alpine
+    container_name: fitstudio-test-redis
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+
+  # Database migrations for test
+  test-migrate:
+    build:
+      context: ./server
+      target: test
+    container_name: fitstudio-test-migrate
+    environment:
+      DATABASE_URL: postgresql://test:test@test-db:5432/fitstudio_test?schema=public
+    command: npx prisma migrate deploy
+    depends_on:
+      test-db:
+        condition: service_healthy
+
+  # Test Runner
+  test-runner:
+    build:
+      context: ./server
+      target: test
+    container_name: fitstudio-test-runner
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://test:test@test-db:5432/fitstudio_test?schema=public
+      REDIS_URL: redis://test-redis:6379
+      JWT_SECRET: test-jwt-secret
+      JWT_REFRESH_SECRET: test-refresh-secret
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      # Stripe test keys (use test mode keys)
+      STRIPE_SECRET_KEY: ${STRIPE_TEST_SECRET_KEY:-sk_test_placeholder}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_TEST_WEBHOOK_SECRET:-whsec_test_placeholder}
+      # SendGrid (disabled in test)
+      SENDGRID_API_KEY: ${SENDGRID_TEST_KEY:-SG.test}
+      # Twilio (disabled in test)
+      TWILIO_ACCOUNT_SID: ${TWILIO_TEST_SID:-AC_test}
+      TWILIO_AUTH_TOKEN: ${TWILIO_TEST_TOKEN:-test_token}
+    depends_on:
+      test-db:
+        condition: service_healthy
+      test-redis:
+        condition: service_healthy
+      test-migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    command: npm test -- --run --reporter=verbose
+
+  # Test Runner with Coverage
+  test-coverage:
+    build:
+      context: ./server
+      target: test
+    container_name: fitstudio-test-coverage
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://test:test@test-db:5432/fitstudio_test?schema=public
+      REDIS_URL: redis://test-redis:6379
+      JWT_SECRET: test-jwt-secret
+      JWT_REFRESH_SECRET: test-refresh-secret
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+    depends_on:
+      test-db:
+        condition: service_healthy
+      test-redis:
+        condition: service_healthy
+      test-migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+      - ./coverage:/app/coverage
+    command: npm test -- --run --coverage
+    profiles:
+      - coverage
+
+  # Watch mode for development testing
+  test-watch:
+    build:
+      context: ./server
+      target: test
+    container_name: fitstudio-test-watch
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://test:test@test-db:5432/fitstudio_test?schema=public
+      REDIS_URL: redis://test-redis:6379
+      JWT_SECRET: test-jwt-secret
+      JWT_REFRESH_SECRET: test-refresh-secret
+    depends_on:
+      test-db:
+        condition: service_healthy
+      test-redis:
+        condition: service_healthy
+      test-migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    command: npm test
+    profiles:
+      - watch
+
+networks:
+  default:
+    name: fitstudio-test-network
