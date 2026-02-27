@@ -6,6 +6,9 @@ export interface CreateTenantInput {
   name: string;
   slug: string;
   ownerId: string;
+  tier?: 'BASE' | 'MID' | 'PREMIUM';
+  timezone?: string;
+  currency?: string;
 }
 
 export interface UpdateTenantInput {
@@ -29,7 +32,7 @@ export class TenantService {
    * Create a new tenant (studio) and assign owner
    */
   async create(input: CreateTenantInput): Promise<Tenant> {
-    const { name, slug, ownerId } = input;
+    const { name, slug, ownerId, tier, timezone, currency } = input;
 
     // Check if slug is available
     const existingTenant = await prisma.tenant.findUnique({
@@ -47,6 +50,9 @@ export class TenantService {
         data: {
           name,
           slug: slug.toLowerCase(),
+          ...(tier && { tier: tier as Tier }),
+          ...(timezone && { timezone }),
+          ...(currency && { currency }),
         },
       });
 

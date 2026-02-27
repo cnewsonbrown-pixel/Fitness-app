@@ -41,6 +41,9 @@ export const createTenantSchema = z.object({
     .min(3, 'Slug must be at least 3 characters')
     .max(50)
     .regex(/^[a-z0-9-]+$/, 'Slug can only contain lowercase letters, numbers, and hyphens'),
+  tier: z.enum(['BASE', 'MID', 'PREMIUM']).optional().default('BASE'),
+  timezone: z.string().max(50).optional().default('UTC'),
+  currency: z.string().max(3).optional().default('USD'),
 });
 
 // ============================================

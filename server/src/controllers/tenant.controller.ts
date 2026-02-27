@@ -28,12 +28,15 @@ export const create = async (
       throw new ForbiddenError('You already belong to a studio');
     }
 
-    const { name, slug } = req.body as CreateTenantInput;
+    const { name, slug, tier, timezone, currency } = req.body as CreateTenantInput;
 
     const tenant = await tenantService.create({
       name,
       slug,
       ownerId: req.user.id,
+      tier,
+      timezone,
+      currency,
     });
 
     res.status(201).json({
