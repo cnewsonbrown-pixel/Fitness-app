@@ -66,14 +66,7 @@ export default function BillingPage() {
           title="Total Revenue"
           value={formatCurrency(revenueSummary?.totalRevenue || 0)}
           icon={DollarSign}
-          trend={
-            revenueSummary?.growthRate
-              ? {
-                  value: Math.abs(revenueSummary.growthRate),
-                  direction: revenueSummary.growthRate >= 0 ? 'up' : 'down',
-                }
-              : undefined
-          }
+          trend={revenueSummary?.growthRate}
         />
         <StatCard
           title="Recurring Revenue"
@@ -89,7 +82,7 @@ export default function BillingPage() {
           title="Net Revenue"
           value={formatCurrency(revenueSummary?.netRevenue || 0)}
           icon={TrendingUp}
-          description={`After ${formatCurrency(revenueSummary?.refunds || 0)} in refunds`}
+          trendLabel={`After ${formatCurrency(revenueSummary?.refunds || 0)} in refunds`}
         />
       </div>
 
