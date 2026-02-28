@@ -47,61 +47,37 @@ export default function AnalyticsPage() {
           title="Total Members"
           value={kpis?.totalMembers || 0}
           icon={Users}
-          trend={
-            kpis?.membersGrowth
-              ? { value: Math.abs(kpis.membersGrowth), direction: kpis.membersGrowth >= 0 ? 'up' : 'down' }
-              : undefined
-          }
+          trend={kpis?.membersGrowth}
         />
         <StatCard
           title="Active Members"
           value={kpis?.activeMembers || 0}
           icon={Users}
-          trend={
-            kpis?.activeMembersGrowth
-              ? { value: Math.abs(kpis.activeMembersGrowth), direction: kpis.activeMembersGrowth >= 0 ? 'up' : 'down' }
-              : undefined
-          }
+          trend={kpis?.activeMembersGrowth}
         />
         <StatCard
           title="Monthly Revenue"
           value={formatCurrency(kpis?.monthlyRevenue || 0)}
           icon={DollarSign}
-          trend={
-            kpis?.revenueGrowth
-              ? { value: Math.abs(kpis.revenueGrowth), direction: kpis.revenueGrowth >= 0 ? 'up' : 'down' }
-              : undefined
-          }
+          trend={kpis?.revenueGrowth}
         />
         <StatCard
           title="Class Attendance"
           value={`${kpis?.classAttendance || 0}%`}
           icon={Calendar}
-          trend={
-            kpis?.attendanceGrowth
-              ? { value: Math.abs(kpis.attendanceGrowth), direction: kpis.attendanceGrowth >= 0 ? 'up' : 'down' }
-              : undefined
-          }
+          trend={kpis?.attendanceGrowth}
         />
         <StatCard
           title="Avg. Retention"
           value={`${kpis?.averageRetention || 0}%`}
           icon={TrendingUp}
-          trend={
-            kpis?.retentionGrowth
-              ? { value: Math.abs(kpis.retentionGrowth), direction: kpis.retentionGrowth >= 0 ? 'up' : 'down' }
-              : undefined
-          }
+          trend={kpis?.retentionGrowth}
         />
         <StatCard
           title="New Signups"
           value={kpis?.newSignups || 0}
           icon={UserPlus}
-          trend={
-            kpis?.signupsGrowth
-              ? { value: Math.abs(kpis.signupsGrowth), direction: kpis.signupsGrowth >= 0 ? 'up' : 'down' }
-              : undefined
-          }
+          trend={kpis?.signupsGrowth}
         />
       </div>
 
