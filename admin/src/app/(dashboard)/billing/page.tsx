@@ -12,7 +12,8 @@ import { ChartCard } from '@/components/shared/chart-card';
 import { AreaChart } from '@/components/shared/area-chart';
 import { PieChart } from '@/components/shared/pie-chart';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { billingApi, Payment } from '@/lib/api/billing.api';
+import { billingApi } from '@/lib/api/billing.api';
+import { Payment } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 
 const paymentStatusColors: Record<string, string> = {
